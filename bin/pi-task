@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Copyright (c) 2026 Robbin Fan
+# SPDX-License-Identifier: MIT
+# Upstream: https://github.com/robbin/grokbot-local-agent
+# Vendored by grokbot-pi-agent-skill. See NOTICE.
+# Tracked Pi tasks: run/reply/status/list/log/cancel/pending/ack; data in ~/.pi/tasks/.
+here="$(cd "$(dirname "$0")" && pwd)"
+export PATH="$HOME/.node22/bin:$HOME/.local/bin:$PATH"
+exec "$here/pi-task.mjs" "$@"

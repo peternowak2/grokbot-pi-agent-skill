@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: shellcheck
+        run: shellcheck -x install.sh bin/pi-task bin/pi-run
+
+      - name: dry-run install
+        run: bash install.sh --dry-run
+
+      - name: dry-run does not print secrets
+        env:
+          DEEPSEEK_API_KEY: test-deepseek-key-should-not-appear
+          PI_NOTIFY_URL: https://example.invalid/hook/test-url-should-not-appear
+          PI_NOTIFY_SECRET: test-notify-secret-should-not-appear
+        run: |
+          bash install.sh --dry-run > /tmp/install-dry.out
+          if grep -F "test-deepseek-key-should-not-appear" /tmp/install-dry.out \
+            || grep -F "test-url-should-not-appear" /tmp/install-dry.out \
+            || grep -F "test-notify-secret-should-not-appear" /tmp/install-dry.out; then
+            echo "installer printed a secret value" >&2
+            exit 1
+          fi
+          grep -F "DEEPSEEK_API_KEY: set" /tmp/install-dry.out
+          grep -F "PI_NOTIFY_URL: set" /tmp/install-dry.out
+          grep -F "PI_NOTIFY_SECRET: set" /tmp/install-dry.out
+          if grep -F "not set" /tmp/install-dry.out; then
+            echo "expected every secret to be reported as set" >&2
+            exit 1
+          fi
+
+      - name: dry-run reports missing secrets
+        run: |
+          env -u DEEPSEEK_API_KEY -u PI_NOTIFY_URL -u PI_NOTIFY_SECRET \
+            bash install.sh --dry-run > /tmp/install-unset.out
+          grep -F "DEEPSEEK_API_KEY: not set" /tmp/install-unset.out
+          grep -F "PI_NOTIFY_URL: not set" /tmp/install-unset.out
+          grep -F "PI_NOTIFY_SECRET: not set" /tmp/install-unset.out
